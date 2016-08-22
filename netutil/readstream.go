@@ -19,7 +19,7 @@ type PacketHander func(packet []byte)
 type StreamReader interface {
 	Conn() net.Conn
 	Read() (n int, err error)
-	SetDecrypter(decrypter CrypterFunc)
+	SetDecrypter(decrypter DecryptFunc)
 	SetTimeout(d time.Duration)
 }
 
@@ -33,7 +33,7 @@ type ReadStream struct {
 	decodeLengthFunc func([]byte) int
 
 	decrypterLocker sync.RWMutex
-	decrypter       CrypterFunc
+	decrypter       DecryptFunc
 }
 
 // 通用的流读取
@@ -45,25 +45,6 @@ func NewReadStream(conn net.Conn, onRecvPacket PacketHander) *ReadStream {
 		onRecvPacket:     onRecvPacket,
 		decodeLengthFunc: proto.DecodeLength,
 	}
-}
-
-func (r *ReadStream) SetDecrypter(decrypter CrypterFunc) {
-	r.decrypterLocker.Lock()
-	defer r.decrypterLocker.Unlock()
-	r.decrypter = decrypter
-}
-
-func (r *ReadStream) SetTimeout(d time.Duration) { r.timeout = d }
-
-func (r *ReadStream) SetByteNumForLength(n int) {
-	r.byteNumForLength = n
-	if len(r.buf) < n {
-		r.buf = make([]byte, n)
-	}
-}
-
-func (r *ReadStream) SetDecodeLengthFunc(decodeLengthFunc func([]byte) int) {
-	r.decodeLengthFunc = decodeLengthFunc
 }
 
 func (r *ReadStream) Conn() net.Conn { return r.conn }
@@ -111,6 +92,25 @@ func (r *ReadStream) Read() (int, error) {
 	return total, nil
 }
 
+func (r *ReadStream) SetDecrypter(decrypter DecryptFunc) {
+	r.decrypterLocker.Lock()
+	defer r.decrypterLocker.Unlock()
+	r.decrypter = decrypter
+}
+
+func (r *ReadStream) SetTimeout(d time.Duration) { r.timeout = d }
+
+func (r *ReadStream) SetByteNumForLength(n int) {
+	r.byteNumForLength = n
+	if len(r.buf) < n {
+		r.buf = make([]byte, n)
+	}
+}
+
+func (r *ReadStream) SetDecodeLengthFunc(decodeLengthFunc func([]byte) int) {
+	r.decodeLengthFunc = decodeLengthFunc
+}
+
 // UDP 包读取
 type UDPReadStream struct {
 	conn         *net.UDPConn
@@ -128,9 +128,6 @@ func NewUDPReadStream(conn *net.UDPConn, onRecvPacket PacketHander) *UDPReadStre
 }
 
 func (r *UDPReadStream) Conn() net.Conn             { return r.conn }
-func (r *UDPReadStream) SetDecrypter(CrypterFunc)   { panic("UDPReadStream unsupport decrypter") }
-func (r *UDPReadStream) SetTimeout(d time.Duration) { r.timeout = d }
-
 func (r *UDPReadStream) Read(CrypterFunc) (int, error) {
 	total := 0
 	if r.timeout > 0 {
@@ -146,3 +143,6 @@ func (r *UDPReadStream) Read(CrypterFunc) (int, error) {
 	}
 	return total, nil
 }
+func (r *UDPReadStream) SetDecrypter(CrypterFunc)   { panic("UDPReadStream unsupport decrypter") }
+func (r *UDPReadStream) SetTimeout(d time.Duration) { r.timeout = d }
+
