@@ -2,6 +2,11 @@ package buffer
 
 import (
 	"sync"
+	"time"
+)
+
+const (
+	MaxGCTime = time.Second
 )
 
 type BufferPool struct {
@@ -9,12 +14,15 @@ type BufferPool struct {
 	collection chan *Buffer
 }
 
-func NewBufferPool(size int) *BufferPool {
+func NewBufferPool(initSize, maxSize int) *BufferPool {
+	if maxSize < initSize {
+		maxSize = initSize
+	}
 	bp := &BufferPool{
 		pool:       &sync.Pool{New: func() interface{} { return NewBuffer() }},
-		collection: make(chan *Buffer, 40960),
+		collection: make(chan *Buffer, maxSize),
 	}
-	for i := 0; i < size; i++ {
+	for i := 0; i < initSize; i++ {
 		bp.pool.Put(bp.pool.New())
 	}
 	go bp.run()
@@ -35,13 +43,20 @@ func (bp *BufferPool) Get() (buf *Buffer, fromPool bool) {
 
 func (bp *BufferPool) Put(buf *Buffer, fromPool bool) {
 	if fromPool && buf != nil {
-		bp.collection <- buf
+		select {
+		case bp.collection <- buf:
+		default:
+			// put buffer fail
+			// this case will use temporary obj
+			// and may cause memory fragmentation
+		}
 	}
 }
 
 func (bp *BufferPool) run() {
 	for buf := range bp.collection {
-		buf.Wait()
-		bp.pool.Put(buf)
+		if buf.GC(MaxGCTime) {
+			bp.pool.Put(buf)
+		}
 	}
 }
