@@ -16,6 +16,11 @@ const (
 type DecryptFunc func(dst, src []byte)
 type EncryptFunc func(dst, src []byte)
 
+type Stream interface {
+	Read() (int, error)
+	Write()
+}
+
 type StreamReader interface {
 	Read() (int, error)
 	SetDecrypt(DecryptFunc)
@@ -48,12 +53,18 @@ type ReadStream struct {
 	decryptChan chan DecryptFunc
 }
 
-func (rs *ReadStream) Read() (int, error) {
+func (rs *ReadStream) Read() (n int, err error) {
 	if rs.timeout > 0 {
 		rs.conn.SetReadDeadline(time.Now().Add(rs.timeout))
 	}
 	// todo
-	return
+	total := 0
+	n, err = rs.conn.Read(rs.buf[:])
+	total += n
+	if err != nil {
+		return total, err
+	}
+	return total, nil
 }
 
 func (rs *ReadStream) SetDecrypt(dec DecryptFunc) {
@@ -67,6 +78,8 @@ func (rs *ReadStream) SetTimeout(t time.Duration) {
 func newReadStream(conn net.Conn) (r *ReadStream) {
 	r = new(ReadStream)
 	r.conn = conn
+	r.buf = make([]byte, 4096)
+	r.decryptChan = make(chan DecryptFunc)
 	// todo
 	return
 }
@@ -123,7 +136,7 @@ func (ws *WriteStream) getClose() bool {
 }
 
 func newWriteStream(conn net.Conn, writeSize int) (w *WriteStream) {
-	if writeSize < 0 {
+	if writeSize <= 0 {
 		writeSize = DefaultWriteSize
 	}
 	w = new(WriteStream)
@@ -166,12 +179,12 @@ func (rws *ReadWriteStream) startWriteLoop(startWrite, endWrite chan struct{}) {
 		}
 
 		select {
-		case b := rws.w.writeChan:
+		case b := <-rws.w.writeChan:
 			_, err := rws.w.write(b)
 			if err != nil {
 				rws.w.setClose()
 			}
-		case encrypt := rws.w.encryptChan:
+		case encrypt := <-rws.w.encryptChan:
 			rws.w.encrypt = encrypt
 		case <-time.After(time.Second):
 		}
@@ -179,7 +192,7 @@ func (rws *ReadWriteStream) startWriteLoop(startWrite, endWrite chan struct{}) {
 
 	// process remain
 	for i := 0; i < remain; i++ {
-		b := rws.w.writeChan
+		b := <-rws.w.writeChan
 		_, err := rws.w.write(b)
 		if err != nil {
 			break
@@ -187,6 +200,10 @@ func (rws *ReadWriteStream) startWriteLoop(startWrite, endWrite chan struct{}) {
 	}
 
 	endWrite <- struct{}{}
+}
+
+func (rws *ReadWriteStream) Send(buf *buffer.Buffer) {
+	rws.w.Send(buf)
 }
 
 func (rws *ReadWriteStream) Start(onStarted, onEnd func()) {
