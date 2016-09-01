@@ -14,21 +14,6 @@ type BufferPool struct {
 	collection chan *Buffer
 }
 
-func NewBufferPool(initSize, maxSize int) *BufferPool {
-	if maxSize < initSize {
-		maxSize = initSize
-	}
-	bp := &BufferPool{
-		pool:       &sync.Pool{New: func() interface{} { return NewBuffer() }},
-		collection: make(chan *Buffer, maxSize),
-	}
-	for i := 0; i < initSize; i++ {
-		bp.pool.Put(bp.pool.New())
-	}
-	go bp.run()
-	return bp
-}
-
 func (bp *BufferPool) Get() (buf *Buffer, fromPool bool) {
 	bufObj := bp.pool.Get()
 	if bufObj == nil {
@@ -59,4 +44,19 @@ func (bp *BufferPool) run() {
 			bp.pool.Put(buf)
 		}
 	}
+}
+
+func NewBufferPool(initSize, maxSize int) *BufferPool {
+	if maxSize < initSize {
+		maxSize = initSize
+	}
+	bp := &BufferPool{
+		pool:       &sync.Pool{New: func() interface{} { return NewBuffer() }},
+		collection: make(chan *Buffer, maxSize),
+	}
+	for i := 0; i < initSize; i++ {
+		bp.pool.Put(bp.pool.New())
+	}
+	go bp.run()
+	return bp
 }
