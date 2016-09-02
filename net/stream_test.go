@@ -3,12 +3,12 @@ package net
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-	"fmt"
 
 	"github.com/GameServerPro/util/buffer"
 )
@@ -76,7 +76,11 @@ func NewMockConn() *MockConn {
 func Test_ReadWriteStream(t *testing.T) {
 	var (
 		conn      = NewMockConn()
-		data      = "test msgs"
+		buf       = bytes.NewBufferString("")
+		handle    = func(pack []byte) {
+			fmt.Printf("testRWStream handle:%v\n",string(pack))
+			buf.Write(pack)
+		}
 		started   = false
 		end       = false
 		stop      = make(chan struct{})
@@ -85,8 +89,8 @@ func Test_ReadWriteStream(t *testing.T) {
 		bp        = buffer.NewBufferPool(2, 2)
 	)
 
-	conn.rbuf = bytes.NewBufferString(data)
-	rws := NewRWStream(conn, 1024)
+	conn.rbuf = bytes.NewBufferString("")
+	rws := NewRWStream(conn, 1024, handle)
 
 	fmt.Println("rwStream start...")
 	go rws.Start(onStarted, onEnd)
@@ -104,7 +108,7 @@ func Test_ReadWriteStream(t *testing.T) {
 	rws.Send(buf2)
 
 	// wait one second and stop
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 5)
 	fmt.Println("rwStream stop...")
 	rws.Stop()
 	fmt.Println("rwStream stoped")
@@ -118,7 +122,9 @@ func Test_ReadWriteStream(t *testing.T) {
 		t.Error("on end must be callback")
 	}
 
-	if conn.wbuf.String() != "helloworld" {
+	t.Log("this is read buf:", string(rws.r.buf))
+	t.Log("this is write buf:", buf.String())
+	if buf.String() != "helloworld" {
 		t.Error("the write buf must be 'helloworld'")
 	}
 
