@@ -136,7 +136,7 @@ func (rstream *MockReadStream) Read() (int, error) {
 }
 func (rstream *MockReadStream) SetEncrypter(encrypter CrypterFunc) { rstream.encrypterChan <- encrypter }
 func (rstream *MockReadStream) SetDecrypter(decrypter CrypterFunc) { rstream.decrypter = decrypter }
-func (rstream *MockReadStream) SetTimeout(d time.Duration){}
+func (rstream *MockReadStream) SetTimeout(d time.Duration)         {}
 
 func TestRWSession(t *testing.T) {
 	var (

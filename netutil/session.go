@@ -2,8 +2,8 @@ package netutil
 
 import (
 	"net"
-	"time"
 	"sync/atomic"
+	"time"
 
 	"github.com/weikaishio/go-logger/logger"
 
@@ -11,7 +11,7 @@ import (
 )
 
 type CrypterFunc func(dst, src []byte)
-type DecryptFunc func(dst,src []byte)
+type DecryptFunc func(dst, src []byte)
 
 type Session interface {
 	Id() string

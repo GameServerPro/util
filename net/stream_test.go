@@ -75,10 +75,10 @@ func NewMockConn() *MockConn {
 
 func Test_ReadWriteStream(t *testing.T) {
 	var (
-		conn      = NewMockConn()
-		buf       = bytes.NewBufferString("")
-		handle    = func(pack []byte) {
-			fmt.Printf("testRWStream handle:%v\n",string(pack))
+		conn   = NewMockConn()
+		buf    = bytes.NewBufferString("")
+		handle = func(pack []byte) {
+			fmt.Printf("testRWStream handle:%v\n", string(pack))
 			buf.Write(pack)
 		}
 		started   = false

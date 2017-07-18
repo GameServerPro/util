@@ -1,10 +1,10 @@
 package net
 
 import (
-	"sync"
 	"fmt"
-	"time"
 	"net"
+	"sync"
+	"time"
 )
 
 // ReadStream

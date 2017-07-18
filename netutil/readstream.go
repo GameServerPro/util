@@ -127,7 +127,7 @@ func NewUDPReadStream(conn *net.UDPConn, onRecvPacket PacketHander) *UDPReadStre
 	}
 }
 
-func (r *UDPReadStream) Conn() net.Conn             { return r.conn }
+func (r *UDPReadStream) Conn() net.Conn { return r.conn }
 func (r *UDPReadStream) Read(CrypterFunc) (int, error) {
 	total := 0
 	if r.timeout > 0 {
@@ -145,4 +145,3 @@ func (r *UDPReadStream) Read(CrypterFunc) (int, error) {
 }
 func (r *UDPReadStream) SetDecrypter(CrypterFunc)   { panic("UDPReadStream unsupport decrypter") }
 func (r *UDPReadStream) SetTimeout(d time.Duration) { r.timeout = d }
-
